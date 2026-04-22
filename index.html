@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; }
   body, h1, h2, h3, p, ul, ol, figure { margin: 0; padding: 0; }
@@ -859,6 +860,20 @@
     white-space: nowrap;
   }
 
+  .btn-row-edit {
+    background: transparent;
+    border: 1px solid var(--gray-200);
+    color: var(--teal-600);
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    margin-right: 4px;
+    transition: all 0.15s;
+  }
+  .btn-row-edit:hover { background: var(--teal-50); border-color: var(--teal-500); }
+
   .btn-row-delete {
     background: transparent;
     border: 1px solid var(--gray-200);
@@ -866,11 +881,86 @@
     width: 28px; height: 28px;
     border-radius: 7px;
     cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
+    display: inline-flex; align-items: center; justify-content: center;
     font-size: 14px;
     transition: all 0.15s;
   }
   .btn-row-delete:hover { background: var(--red-100); border-color: var(--red-500); }
+
+  /* ==================== EDIT BANNER ==================== */
+  .edit-banner {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    background: linear-gradient(135deg, #fffbeb, #fef3c7);
+    border: 1.5px solid var(--amber-500);
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-bottom: 18px;
+    box-shadow: 0 2px 8px -2px rgba(245, 158, 11, 0.25);
+  }
+  .edit-banner.show { display: flex; }
+
+  .edit-banner-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .edit-banner-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .edit-banner-text {
+    font-size: 13px;
+    color: var(--amber-700);
+    font-weight: 600;
+    line-height: 1.3;
+    min-width: 0;
+  }
+
+  .edit-banner-name {
+    display: inline-block;
+    background: white;
+    padding: 1px 9px;
+    border-radius: 5px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--gray-800);
+    border: 1px solid #fde68a;
+    margin-left: 4px;
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+
+  .btn-cancel-edit {
+    background: white;
+    border: 1px solid var(--amber-500);
+    color: var(--amber-700);
+    padding: 7px 12px;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  .btn-cancel-edit:hover { background: var(--amber-100); }
+
+  .save-btn.editing {
+    background: linear-gradient(120deg, var(--amber-600, #d97706), #ea580c);
+  }
+  .save-btn.editing:hover:not(:disabled) {
+    background: linear-gradient(120deg, var(--amber-700), #c2410c);
+  }
 
   .empty-state {
     text-align: center;
@@ -989,6 +1079,18 @@
 </header>
 
 <main class="container">
+
+  <!-- Edit mode banner -->
+  <div class="edit-banner" id="editBanner">
+    <div class="edit-banner-left">
+      <div class="edit-banner-icon">✏️</div>
+      <div class="edit-banner-text">
+        Editing — updates will replace
+        <span class="edit-banner-name" id="editBannerName">—</span>
+      </div>
+    </div>
+    <button class="btn-cancel-edit" id="cancelEditBtn">Cancel Edit</button>
+  </div>
 
   <!-- Description bar -->
   <div class="description-bar">
@@ -1179,7 +1281,7 @@
               <div class="msrp-card-value" id="msrpSell">$0.00</div>
             </div>
             <div class="msrp-card">
-              <div class="msrp-card-label">Max FOB (≥35% GM)</div>
+              <div class="msrp-card-label" id="msrpFobLabel">Max FOB (≥35% GM)</div>
               <div class="msrp-card-value" id="msrpFob">$0.00</div>
             </div>
           </div>
@@ -1189,7 +1291,7 @@
             <span class="msrp-confirm-value" id="msrpProjected">—</span>
           </div>
 
-          <p class="helper-text">Formula: Sell = MSRP × (1 − margin%). Max FOB keeps your gross margin at or above 35%.</p>
+          <p class="helper-text" id="msrpHelper">Formula: Sell = MSRP × (1 − margin%). Max FOB keeps your gross margin at or above 35%.</p>
         </div>
       </section>
 
@@ -1203,7 +1305,7 @@
 
 <!-- Version Footer -->
 <footer class="version-footer">
-  <span class="version-pill">V1.2</span>
+  <span class="version-pill">V1.7</span>
 </footer>
 
 <!-- Saved Costings Panel -->
@@ -1221,7 +1323,7 @@
     <div class="saved-actions-btns">
       <button class="btn btn-danger" id="clearAllBtn">Clear All</button>
       <button class="btn btn-share" id="shareBtn" hidden>↗ Share</button>
-      <button class="btn save-btn" id="exportBtn" style="padding:10px 16px;font-size:14px;">⬇ Export CSV</button>
+      <button class="btn save-btn" id="exportBtn" style="padding:10px 16px;font-size:14px;">⬇ Export Excel</button>
     </div>
   </div>
 </aside>
@@ -1234,14 +1336,39 @@
   'use strict';
 
   // ==================== CONSTANTS ====================
-  const MULTIPLIERS = {
-    'Canada|Bangladesh': 1.55,
-    'Canada|China':      1.75,
-    'Canada|India':      1.75,
-    'USA|Bangladesh':    1.45,
-    'USA|China':         1.65,
-    'USA|India':         1.60,
+  const DEFAULTS = {
+    multipliers: {
+      'Canada|Bangladesh': 1.55,
+      'Canada|China':      1.75,
+      'Canada|India':      1.75,
+      'USA|Bangladesh':    1.45,
+      'USA|China':         1.65,
+      'USA|India':         1.60,
+    },
+    targetMargin: 35,
+    warnMargin: 20,
+    currencyCA: 'CAD',
+    currencyUS: 'USD',
   };
+
+  // Mutable config — populated by loadAdminSettings() before render
+  let CONFIG = JSON.parse(JSON.stringify(DEFAULTS));
+
+  function loadAdminSettings() {
+    try {
+      const raw = localStorage.getItem('margin_calc_settings_v1');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        CONFIG = {
+          multipliers: { ...DEFAULTS.multipliers, ...(parsed.multipliers || {}) },
+          targetMargin: parsed.targetMargin ?? DEFAULTS.targetMargin,
+          warnMargin: parsed.warnMargin ?? DEFAULTS.warnMargin,
+          currencyCA: parsed.currencyCA ?? DEFAULTS.currencyCA,
+          currencyUS: parsed.currencyUS ?? DEFAULTS.currencyUS,
+        };
+      }
+    } catch (e) { /* use defaults */ }
+  }
 
   const FLAGS = {
     Canada: '🇨🇦',
@@ -1264,6 +1391,7 @@
     msrp: 0,
     targetMargin: 0,
     costings: [],
+    editingId: null,
   };
 
   // ==================== DOM ====================
@@ -1297,6 +1425,8 @@
     targetMargin: $('targetMargin'),
     msrpSell: $('msrpSell'),
     msrpFob: $('msrpFob'),
+    msrpFobLabel: $('msrpFobLabel'),
+    msrpHelper: $('msrpHelper'),
     msrpProjected: $('msrpProjected'),
     resetBtn: $('resetBtn'),
     saveBtn: $('saveBtn'),
@@ -1310,11 +1440,14 @@
     clearAllBtn: $('clearAllBtn'),
     exportBtn: $('exportBtn'),
     shareBtn: $('shareBtn'),
+    editBanner: $('editBanner'),
+    editBannerName: $('editBannerName'),
+    cancelEditBtn: $('cancelEditBtn'),
     toast: $('toast'),
   };
 
   // ==================== HELPERS ====================
-  const currencyCode = () => state.country === 'Canada' ? 'CAD' : 'USD';
+  const currencyCode = () => state.country === 'Canada' ? CONFIG.currencyCA : CONFIG.currencyUS;
 
   const fmtCurrency = (n) => {
     if (!isFinite(n)) n = 0;
@@ -1332,7 +1465,7 @@
 
   const fmtInt = (n) => new Intl.NumberFormat('en-US').format(Math.round(n || 0));
 
-  const getMultiplier = () => MULTIPLIERS[`${state.country}|${state.origin}`] || 1.55;
+  const getMultiplier = () => CONFIG.multipliers[`${state.country}|${state.origin}`] || 1.55;
 
   const getLandedCost = () => state.fob * getMultiplier();
 
@@ -1349,19 +1482,19 @@
     return (getGrossProfit() / lc) * 100;
   };
 
-  // Color bucket (per spec): green ≥35, amber 20–35, red <20
+  // Color bucket: green ≥ target, amber ≥ warn, red below warn
   const marginBucket = (m) => {
     if (m === null || !isFinite(m)) return 'empty';
-    if (m >= 35) return 'good';
-    if (m >= 20) return 'warn';
+    if (m >= CONFIG.targetMargin) return 'good';
+    if (m >= CONFIG.warnMargin) return 'warn';
     return 'bad';
   };
 
-  // Emoji indicator (per spec): ✅ ≥35, ⚠️ below 35 but non-negative, ❌ negative
+  // Emoji indicator: ✅ ≥ target, ⚠️ below target but non-negative, ❌ negative
   const marginIcon = (m) => {
     if (m === null || !isFinite(m)) return '—';
     if (m < 0) return '❌';
-    if (m >= 35) return '✅';
+    if (m >= CONFIG.targetMargin) return '✅';
     return '⚠️';
   };
 
@@ -1390,7 +1523,7 @@
       el.marginValue.textContent = fmtPct(gm);
       const labels = {
         good: 'Healthy margin',
-        warn: 'Below 35% target',
+        warn: `Below ${CONFIG.targetMargin}% target`,
         bad: gm < 0 ? 'Selling below cost' : 'Margin is too thin',
         empty: ''
       };
@@ -1437,15 +1570,17 @@
 
     if (msrp > 0 && tm >= 0 && tm < 100) {
       sellToCustomer = msrp * (1 - tm / 100);
-      // For minimum 35% GM: Landed = SellToCustomer × (1 - 0.35)
-      const maxLanded = sellToCustomer * 0.65;
+      // For minimum target GM: Landed = SellToCustomer × (1 - target/100)
+      const maxLanded = sellToCustomer * (1 - CONFIG.targetMargin / 100);
       maxFob = mult > 0 ? maxLanded / mult : 0;
-      // Projected margin at that FOB equals 35% by construction
-      projectedGM = 35;
+      // Projected margin at that FOB equals target by construction
+      projectedGM = CONFIG.targetMargin;
     }
     el.msrpSell.textContent = sellToCustomer ? fmtCurrency(sellToCustomer) : '$0.00';
     el.msrpFob.textContent = maxFob ? fmtCurrency(maxFob) : '$0.00';
     el.msrpProjected.textContent = projectedGM === null ? '—' : fmtPct(projectedGM);
+    el.msrpFobLabel.textContent = `Max FOB (≥${CONFIG.targetMargin}% GM)`;
+    el.msrpHelper.textContent = `Formula: Sell = MSRP × (1 − margin%). Max FOB keeps your gross margin at or above ${CONFIG.targetMargin}%.`;
 
     // Save button
     el.saveBtn.disabled = !(state.fob > 0 && state.sellingPrice > 0);
@@ -1490,7 +1625,10 @@
         <td class="saved-num">${fmtInt(r.units)}</td>
         <td class="saved-num">${cur(r.totalGM)}</td>
         <td class="timestamp">${whenStr}</td>
-        <td><button class="btn-row-delete" data-id="${r.id}" title="Delete">×</button></td>
+        <td style="white-space:nowrap;">
+          <button class="btn-row-edit" data-id="${r.id}" title="Edit in calculator">✏️</button>
+          <button class="btn-row-delete" data-id="${r.id}" title="Delete">×</button>
+        </td>
       </tr>`;
     }).join('');
 
@@ -1509,16 +1647,22 @@
               <th>Units</th>
               <th>Total GM</th>
               <th>Saved</th>
-              <th></th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>${tbody}</tbody>
         </table>
       </div>`;
 
-    // Wire up delete buttons
+    // Wire up action buttons
     el.savedBody.querySelectorAll('.btn-row-delete').forEach(btn => {
       btn.addEventListener('click', () => deleteCosting(Number(btn.dataset.id)));
+    });
+    el.savedBody.querySelectorAll('.btn-row-edit').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const c = state.costings.find(x => x.id === Number(btn.dataset.id));
+        if (c) startEdit(c);
+      });
     });
   }
 
@@ -1539,6 +1683,7 @@
   el.targetMargin.addEventListener('input', e => { state.targetMargin = parseFloat(e.target.value) || 0; render(); });
 
   el.resetBtn.addEventListener('click', () => {
+    cancelEdit();
     state.description = '';
     state.fob = 0;
     state.sellingPrice = 0;
@@ -1559,6 +1704,39 @@
     if (!(state.fob > 0 && state.sellingPrice > 0)) return;
     const gm = getGrossMargin();
     const gp = getGrossProfit();
+
+    if (state.editingId !== null) {
+      // Update existing record in place
+      const idx = state.costings.findIndex(c => c.id === state.editingId);
+      if (idx >= 0) {
+        const original = state.costings[idx];
+        state.costings[idx] = {
+          ...original,
+          description: state.description || '(no description)',
+          country: state.country,
+          origin: state.origin,
+          currency: currencyCode(),
+          multiplier: getMultiplier(),
+          fob: state.fob,
+          landedCost: getLandedCost(),
+          sellingPrice: state.sellingPrice,
+          margin: gm,
+          grossProfit: gp,
+          units: state.units,
+          totalGM: gp * state.units,
+          totalSale: state.sellingPrice * state.units,
+          savedAt: Date.now(),
+        };
+        await persist();
+        cancelEdit();
+        render();
+        renderSavedTable();
+        toast('✓ Costing updated', 'success');
+        return;
+      }
+    }
+
+    // Create new record
     const costing = {
       id: Date.now(),
       description: state.description || '(no description)',
@@ -1583,6 +1761,45 @@
     toast('✓ Costing saved', 'success');
   });
 
+  el.cancelEditBtn.addEventListener('click', cancelEdit);
+
+  // ==================== EDIT MODE ====================
+  function startEdit(costing) {
+    state.editingId = costing.id;
+    state.description = costing.description === '(no description)' ? '' : (costing.description || '');
+    state.country = costing.country;
+    state.origin = costing.origin;
+    state.fob = costing.fob;
+    state.sellingPrice = costing.sellingPrice;
+    state.units = costing.units || 0;
+
+    // Sync to inputs
+    el.desc.value = state.description;
+    el.country.value = state.country;
+    el.origin.value = state.origin;
+    el.fob.value = state.fob;
+    el.sell.value = state.sellingPrice;
+    el.units.value = state.units || '';
+
+    // Show banner + change save button
+    el.editBanner.classList.add('show');
+    el.editBannerName.textContent = costing.description || '(no description)';
+    el.saveBtn.innerHTML = '💾 Update Costing';
+    el.saveBtn.classList.add('editing');
+
+    closeSavedPanel();
+    render();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function cancelEdit() {
+    if (state.editingId === null) return;
+    state.editingId = null;
+    el.editBanner.classList.remove('show');
+    el.saveBtn.innerHTML = '💾 Save This Costing';
+    el.saveBtn.classList.remove('editing');
+  }
+
   el.openSavedBtn.addEventListener('click', openSavedPanel);
   el.closeSavedBtn.addEventListener('click', closeSavedPanel);
   el.overlay.addEventListener('click', closeSavedPanel);
@@ -1600,8 +1817,8 @@
     toast('All costings cleared', 'success');
   });
 
-  el.exportBtn.addEventListener('click', exportCSV);
-  el.shareBtn.addEventListener('click', shareCSV);
+  el.exportBtn.addEventListener('click', exportReport);
+  el.shareBtn.addEventListener('click', shareReport);
 
   function openSavedPanel() {
     renderSavedTable();
@@ -1617,6 +1834,7 @@
   }
 
   async function deleteCosting(id) {
+    if (state.editingId === id) cancelEdit();
     state.costings = state.costings.filter(c => c.id !== id);
     await persist();
     render();
@@ -1625,102 +1843,236 @@
   }
 
   // ==================== EXPORT / SHARE ====================
-  function buildCSV() {
-    const headers = [
+  // Builds a sectioned worksheet with merged headers. Sections appear ONLY if
+  // their underlying data is being used by at least one record.
+  function buildReport() {
+    const includeGroup = state.costings.some(c => (c.units || 0) > 0);
+    const sortedRows = [...state.costings].sort((a, b) => b.savedAt - a.savedAt);
+
+    // Column layout
+    const colHeaders = [
       'Style/Description', 'Sold In', 'Origin', 'Currency', 'Multiplier',
-      'FOB', 'Landed Cost', 'Selling Price', 'Gross Margin %',
-      'Gross Profit/unit', 'Units', 'Total Sale', 'Total Gross Margin',
-      'Saved At'
+      'FOB', 'Landed Cost', 'Selling Price',
+      'Gross Margin %', 'Profit / Unit',
     ];
-    const esc = (v) => {
-      if (v === null || v === undefined) return '';
-      const s = String(v);
-      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const rows = [...state.costings]
-      .sort((a, b) => b.savedAt - a.savedAt)
-      .map(c => [
-        c.description,
+    if (includeGroup) colHeaders.push('Units', 'Total Sale', 'Total GM');
+    colHeaders.push('Saved At');
+    const totalCols = colHeaders.length;
+
+    // Section header row (will be merged)
+    const sectionRow = [
+      'STYLE & SOURCING', '', '', '', '',
+      'PRICING', '', '',
+      'MARGIN RESULTS', '',
+    ];
+    if (includeGroup) sectionRow.push('GROUP TOTALS', '', '');
+    sectionRow.push('METADATA');
+
+    // Build all rows (array of arrays)
+    const aoa = [];
+    aoa.push(['MARGIN CALCULATOR — COSTINGS REPORT']);
+    aoa.push([`Generated ${new Date().toLocaleString('en-US', {
+      year: 'numeric', month: 'long', day: 'numeric',
+      hour: 'numeric', minute: '2-digit'
+    })}  ·  ${sortedRows.length} record${sortedRows.length === 1 ? '' : 's'}`]);
+    aoa.push([]);                  // blank row
+    aoa.push(sectionRow);          // section headers (row index 3)
+    aoa.push(colHeaders);          // column headers (row index 4)
+
+    // Data rows (start at row index 5)
+    sortedRows.forEach(c => {
+      const row = [
+        c.description || '',
         c.country,
         c.origin,
         c.currency,
-        c.multiplier.toFixed(2),
-        c.fob.toFixed(2),
-        c.landedCost.toFixed(2),
-        c.sellingPrice.toFixed(2),
-        c.margin === null ? '' : c.margin.toFixed(2),
-        c.grossProfit.toFixed(2),
-        c.units,
-        c.totalSale.toFixed(2),
-        c.totalGM.toFixed(2),
-        new Date(c.savedAt).toISOString(),
-      ].map(esc).join(','));
-    return [headers.map(esc).join(','), ...rows].join('\n');
+        c.multiplier,
+        c.fob,
+        c.landedCost,
+        c.sellingPrice,
+        c.margin === null ? '' : c.margin / 100,  // store as fraction → percent format
+        c.grossProfit,
+      ];
+      if (includeGroup) {
+        if ((c.units || 0) > 0) {
+          row.push(c.units, c.totalSale, c.totalGM);
+        } else {
+          row.push('', '', '');   // leave blank if this row didn't use group totals
+        }
+      }
+      row.push(new Date(c.savedAt));
+      aoa.push(row);
+    });
+
+    return { aoa, totalCols, includeGroup, dataRowCount: sortedRows.length };
   }
 
-  function getExportFilename() {
-    const ts = new Date().toISOString().slice(0, 10);
-    return `margin_costings_${ts}.csv`;
+  // Returns { wb, filename } when SheetJS is available, else null
+  function buildXLSX() {
+    if (typeof XLSX === 'undefined') return null;
+
+    const { aoa, totalCols, includeGroup, dataRowCount } = buildReport();
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+    // Merge cells: title (row 0), subtitle (row 1), and each section header (row 3)
+    const merges = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } },
+      { s: { r: 3, c: 0 }, e: { r: 3, c: 4 } },   // STYLE & SOURCING (5 cols)
+      { s: { r: 3, c: 5 }, e: { r: 3, c: 7 } },   // PRICING (3 cols)
+      { s: { r: 3, c: 8 }, e: { r: 3, c: 9 } },   // MARGIN (2 cols)
+    ];
+    let nextCol = 10;
+    if (includeGroup) {
+      merges.push({ s: { r: 3, c: nextCol }, e: { r: 3, c: nextCol + 2 } });
+      nextCol += 3;
+    }
+    // METADATA is single col, no merge needed
+    ws['!merges'] = merges;
+
+    // Column widths
+    const cols = [
+      { wch: 30 }, { wch: 11 }, { wch: 12 }, { wch: 9 }, { wch: 11 },
+      { wch: 11 }, { wch: 13 }, { wch: 14 },
+      { wch: 14 }, { wch: 13 },
+    ];
+    if (includeGroup) cols.push({ wch: 9 }, { wch: 14 }, { wch: 14 });
+    cols.push({ wch: 18 });
+    ws['!cols'] = cols;
+
+    // Row heights — taller for title and section header rows
+    ws['!rows'] = [
+      { hpt: 22 }, { hpt: 16 }, { hpt: 8 }, { hpt: 22 }, { hpt: 18 }
+    ];
+
+    // Number / date formats on the data rows
+    const dataStart = 5;
+    for (let i = 0; i < dataRowCount; i++) {
+      const r = dataStart + i;
+      setFmt(ws, r, 4, '0.00');                  // Multiplier
+      setFmt(ws, r, 5, '$#,##0.00');             // FOB
+      setFmt(ws, r, 6, '$#,##0.00');             // Landed
+      setFmt(ws, r, 7, '$#,##0.00');             // Selling
+      setFmt(ws, r, 8, '0.0%');                  // Margin %
+      setFmt(ws, r, 9, '$#,##0.00');             // Profit
+      let metaCol = 10;
+      if (includeGroup) {
+        setFmt(ws, r, 10, '#,##0');              // Units
+        setFmt(ws, r, 11, '$#,##0.00');          // Total Sale
+        setFmt(ws, r, 12, '$#,##0.00');          // Total GM
+        metaCol = 13;
+      }
+      setFmt(ws, r, metaCol, 'yyyy-mm-dd hh:mm');
+    }
+
+    // Freeze top 5 rows (title + sections + headers) so data scrolls under them
+    ws['!freeze'] = { xSplit: 0, ySplit: 5 };
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Costings');
+
+    const filename = `margin_costings_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    return { wb, filename };
+  }
+
+  function setFmt(ws, r, c, fmt) {
+    const addr = XLSX.utils.encode_cell({ r, c });
+    if (ws[addr]) ws[addr].z = fmt;
+  }
+
+  // CSV builder kept as fallback (SheetJS not loaded, or share-sheet rejecting xlsx)
+  function buildCSV() {
+    const { aoa } = buildReport();
+    const esc = (v) => {
+      if (v === null || v === undefined) return '';
+      let s;
+      if (v instanceof Date) s = v.toISOString().slice(0, 16).replace('T', ' ');
+      else s = String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    return aoa.map(row => row.map(esc).join(',')).join('\n');
+  }
+
+  function getCsvFilename() {
+    return `margin_costings_${new Date().toISOString().slice(0, 10)}.csv`;
   }
 
   function exportCSV() {
-    if (!state.costings.length) {
-      toast('Nothing to export', 'error');
-      return;
-    }
     const csv = buildCSV();
-    // UTF-8 BOM so Excel on Windows opens it correctly
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = getExportFilename();
+    a.download = getCsvFilename();
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast('✓ Exported CSV', 'success');
   }
 
-  async function shareCSV() {
+  function exportReport() {
+    if (!state.costings.length) {
+      toast('Nothing to export', 'error');
+      return;
+    }
+    const built = buildXLSX();
+    if (built) {
+      XLSX.writeFile(built.wb, built.filename);
+      toast('✓ Excel report exported', 'success');
+    } else {
+      exportCSV();
+      toast('✓ CSV exported (Excel library unavailable)', 'success');
+    }
+  }
+
+  async function shareReport() {
     if (!state.costings.length) {
       toast('Nothing to share', 'error');
       return;
     }
-    const csv = buildCSV();
-    const filename = getExportFilename();
-    const file = new File(['\uFEFF' + csv], filename, { type: 'text/csv' });
+    const built = buildXLSX();
+    let file;
+    if (built) {
+      const arrayBuffer = XLSX.write(built.wb, { type: 'array', bookType: 'xlsx' });
+      file = new File([arrayBuffer], built.filename, {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+    } else {
+      const csv = buildCSV();
+      file = new File(['\uFEFF' + csv], getCsvFilename(), { type: 'text/csv' });
+    }
 
-    // Confirm sharing this specific file is supported
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
         await navigator.share({
           files: [file],
-          title: 'Margin Costings Export',
-          text: `${state.costings.length} saved costing${state.costings.length === 1 ? '' : 's'} — exported from Margin Calculator`,
+          title: 'Margin Costings Report',
+          text: `${state.costings.length} saved costing${state.costings.length === 1 ? '' : 's'}`,
         });
         toast('✓ Shared', 'success');
       } catch (err) {
-        // User cancelled — stay quiet
         if (err && err.name !== 'AbortError') {
           console.warn('share failed, falling back to download', err);
-          exportCSV();
+          exportReport();
         }
       }
     } else {
-      // Shouldn't reach here because button is hidden, but fall back just in case
-      exportCSV();
+      exportReport();
     }
   }
 
-  // Feature-detect file sharing and reveal the share button if supported
+  // Feature-detect file sharing — test with the actual file type we'd send
   function detectShareSupport() {
     try {
-      const probe = new File(['test'], 'test.csv', { type: 'text/csv' });
+      const probeType = (typeof XLSX !== 'undefined')
+        ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        : 'text/csv';
+      const probeName = (typeof XLSX !== 'undefined') ? 'test.xlsx' : 'test.csv';
+      const probe = new File(['x'], probeName, { type: probeType });
       if (navigator.canShare && navigator.canShare({ files: [probe] })) {
         el.shareBtn.hidden = false;
       }
-    } catch (e) { /* share not supported, leave hidden */ }
+    } catch (e) { /* share not supported */ }
   }
 
   // ==================== PERSISTENCE ====================
@@ -1770,6 +2122,7 @@
 
   // ==================== INIT ====================
   (async function init() {
+    loadAdminSettings();
     await loadSaved();
     detectShareSupport();
     render();
