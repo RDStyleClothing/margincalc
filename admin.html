@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   ============================================================================
-  MARGIN CALCULATOR — ADMIN BACKEND (V1.8)
+  MARGIN CALCULATOR — ADMIN BACKEND (V1.9)
   ============================================================================
 
   Purpose: Edit the locked values used by the Margin Calculator app — the 6
@@ -639,7 +639,7 @@
 <body>
 
 <!-- LOGIN GATE -->
-<div id="loginGate">
+<div id="loginGate" style="display:none;">
   <div class="login-wrap">
     <div class="login-icon">🔐</div>
     <h2>Admin Access</h2>
@@ -780,7 +780,7 @@
 <div class="toast" id="toast"></div>
 
 <footer class="version-footer">
-  <span class="version-pill">V1.8</span>
+  <span class="version-pill">V1.9</span>
 </footer>
 
 <script>
@@ -1212,6 +1212,7 @@
 
   // ==================== SHOW APP ====================
   function showApp() {
+    $('loginGate').style.display = 'none';
     $('adminApp').style.display = 'block';
     saved = loadSettings();
     draft = deepClone(saved);
