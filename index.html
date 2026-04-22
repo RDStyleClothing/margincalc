@@ -892,6 +892,48 @@
     .result-value { font-size: 42px; }
     .multiplier-value { font-size: 28px; }
   }
+
+  /* ==================== VERSION FOOTER ==================== */
+  .version-footer {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 24px 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .version-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    background: white;
+    border: 1px solid var(--teal-200);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--teal-700);
+    box-shadow: 0 1px 2px rgba(15, 118, 110, 0.06);
+    font-family: var(--font-mono);
+    letter-spacing: 0.3px;
+  }
+
+  .version-pill::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--emerald-500);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+  }
+
+  .version-meta {
+    font-size: 11px;
+    color: var(--gray-500);
+    font-family: var(--font-body);
+  }
 </style>
 </head>
 <body>
@@ -1124,6 +1166,12 @@
     </div>
   </div>
 </main>
+
+<!-- Version Footer -->
+<footer class="version-footer">
+  <span class="version-pill">V1</span>
+  <span class="version-meta">Margin Calculator · Initial release</span>
+</footer>
 
 <!-- Saved Costings Panel -->
 <div class="overlay" id="overlay"></div>
