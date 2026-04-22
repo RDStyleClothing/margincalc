@@ -734,6 +734,40 @@
     align-items: center;
     background: white;
     flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+
+  .saved-actions-btns {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .btn-share {
+    background: linear-gradient(120deg, var(--teal-600), var(--emerald-600));
+    color: white;
+    padding: 10px 16px;
+    font-size: 14px;
+    box-shadow: 0 2px 8px -2px rgba(13, 148, 136, 0.4);
+  }
+  .btn-share:hover:not(:disabled) {
+    background: linear-gradient(120deg, var(--teal-700), var(--emerald-700));
+  }
+
+  @media (max-width: 520px) {
+    .saved-actions {
+      padding: 12px 16px;
+    }
+    .saved-actions-btns {
+      width: 100%;
+      justify-content: stretch;
+    }
+    .saved-actions-btns .btn {
+      flex: 1;
+      padding: 10px 8px;
+      font-size: 13px;
+    }
   }
 
   .saved-count-text {
@@ -1169,8 +1203,8 @@
 
 <!-- Version Footer -->
 <footer class="version-footer">
-  <span class="version-pill">V1</span>
-  <span class="version-meta">Margin Calculator · Initial release</span>
+  <span class="version-pill">V1.1</span>
+  <span class="version-meta">Margin Calculator · Added native share for CSV export</span>
 </footer>
 
 <!-- Saved Costings Panel -->
@@ -1185,8 +1219,9 @@
   </div>
   <div class="saved-actions">
     <div class="saved-count-text" id="savedCountText">0 records</div>
-    <div style="display:flex;gap:10px;">
+    <div class="saved-actions-btns">
       <button class="btn btn-danger" id="clearAllBtn">Clear All</button>
+      <button class="btn btn-share" id="shareBtn" hidden>↗ Share</button>
       <button class="btn save-btn" id="exportBtn" style="padding:10px 16px;font-size:14px;">⬇ Export CSV</button>
     </div>
   </div>
@@ -1275,6 +1310,7 @@
     savedCountText: $('savedCountText'),
     clearAllBtn: $('clearAllBtn'),
     exportBtn: $('exportBtn'),
+    shareBtn: $('shareBtn'),
     toast: $('toast'),
   };
 
@@ -1566,6 +1602,7 @@
   });
 
   el.exportBtn.addEventListener('click', exportCSV);
+  el.shareBtn.addEventListener('click', shareCSV);
 
   function openSavedPanel() {
     renderSavedTable();
@@ -1588,12 +1625,8 @@
     toast('Costing deleted', 'success');
   }
 
-  // ==================== EXPORT ====================
-  function exportCSV() {
-    if (!state.costings.length) {
-      toast('Nothing to export', 'error');
-      return;
-    }
+  // ==================== EXPORT / SHARE ====================
+  function buildCSV() {
     const headers = [
       'Style/Description', 'Sold In', 'Origin', 'Currency', 'Multiplier',
       'FOB', 'Landed Cost', 'Selling Price', 'Gross Margin %',
@@ -1623,18 +1656,72 @@
         c.totalGM.toFixed(2),
         new Date(c.savedAt).toISOString(),
       ].map(esc).join(','));
-    const csv = [headers.map(esc).join(','), ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    return [headers.map(esc).join(','), ...rows].join('\n');
+  }
+
+  function getExportFilename() {
+    const ts = new Date().toISOString().slice(0, 10);
+    return `margin_costings_${ts}.csv`;
+  }
+
+  function exportCSV() {
+    if (!state.costings.length) {
+      toast('Nothing to export', 'error');
+      return;
+    }
+    const csv = buildCSV();
+    // UTF-8 BOM so Excel on Windows opens it correctly
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    const ts = new Date().toISOString().slice(0, 10);
     a.href = url;
-    a.download = `margin_costings_${ts}.csv`;
+    a.download = getExportFilename();
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     toast('✓ Exported CSV', 'success');
+  }
+
+  async function shareCSV() {
+    if (!state.costings.length) {
+      toast('Nothing to share', 'error');
+      return;
+    }
+    const csv = buildCSV();
+    const filename = getExportFilename();
+    const file = new File(['\uFEFF' + csv], filename, { type: 'text/csv' });
+
+    // Confirm sharing this specific file is supported
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: 'Margin Costings Export',
+          text: `${state.costings.length} saved costing${state.costings.length === 1 ? '' : 's'} — exported from Margin Calculator`,
+        });
+        toast('✓ Shared', 'success');
+      } catch (err) {
+        // User cancelled — stay quiet
+        if (err && err.name !== 'AbortError') {
+          console.warn('share failed, falling back to download', err);
+          exportCSV();
+        }
+      }
+    } else {
+      // Shouldn't reach here because button is hidden, but fall back just in case
+      exportCSV();
+    }
+  }
+
+  // Feature-detect file sharing and reveal the share button if supported
+  function detectShareSupport() {
+    try {
+      const probe = new File(['test'], 'test.csv', { type: 'text/csv' });
+      if (navigator.canShare && navigator.canShare({ files: [probe] })) {
+        el.shareBtn.hidden = false;
+      }
+    } catch (e) { /* share not supported, leave hidden */ }
   }
 
   // ==================== PERSISTENCE ====================
@@ -1685,6 +1772,7 @@
   // ==================== INIT ====================
   (async function init() {
     await loadSaved();
+    detectShareSupport();
     render();
   })();
 })();
