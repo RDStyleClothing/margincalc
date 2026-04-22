@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   ============================================================================
-  MARGIN CALCULATOR — ADMIN BACKEND (V1.9)
+  MARGIN CALCULATOR — ADMIN BACKEND (V2.0)
   ============================================================================
 
   Purpose: Edit the locked values used by the Margin Calculator app — the 6
@@ -621,6 +621,27 @@
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
   }
 
+  .footer-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: white;
+    border: 1px solid var(--slate-200);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--slate-600);
+    text-decoration: none;
+    transition: all 0.15s;
+    font-family: var(--font-body);
+  }
+  .footer-link:hover {
+    background: var(--teal-50);
+    border-color: var(--teal-300);
+    color: var(--teal-700);
+  }
+
   /* ==================== LINKS ==================== */
   .back-link {
     display: inline-flex;
@@ -649,9 +670,6 @@
       <input type="password" id="passwordInput" class="input" placeholder="Password" autocomplete="current-password">
     </div>
     <button class="btn btn-primary btn-block" id="loginBtn">Unlock Admin →</button>
-    <p class="setting-help" style="text-align:center;margin-top:14px;">
-      Default password is <code class="mono" style="background:var(--slate-100);padding:1px 6px;border-radius:4px;">admin</code> — change it in the HTML source before deploying.
-    </p>
   </div>
 </div>
 
@@ -780,7 +798,9 @@
 <div class="toast" id="toast"></div>
 
 <footer class="version-footer">
-  <span class="version-pill">V1.9</span>
+  <span class="version-pill">V2.0</span>
+  <!-- If you renamed your files, update this href to match -->
+  <a href="margin_calculator.html" class="footer-link">📊 Open Calculator →</a>
 </footer>
 
 <script>
