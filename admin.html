@@ -1,7 +1,8 @@
+
 <!DOCTYPE html>
 <!--
   ============================================================================
-  MARGIN CALCULATOR — ADMIN BACKEND (V2.2)
+  MARGIN CALCULATOR — ADMIN BACKEND (V2.3)
   ============================================================================
 
   Purpose: Edit the locked values used by the Margin Calculator app — the 6
@@ -25,6 +26,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
 <title>Admin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -798,7 +800,7 @@
 <div class="toast" id="toast"></div>
 
 <footer class="version-footer">
-  <span class="version-pill">V2.2</span>
+  <span class="version-pill">V2.3</span>
   <a href="https://rdstyleclothing.github.io/margincalc/" class="footer-link">📊 Open Calculator →</a>
 </footer>
 
@@ -807,11 +809,23 @@
   'use strict';
 
   // ==================== CONFIG ====================
-  // Change this password before deploying. Any non-empty string works.
-  const PASSWORD = 'admin';
+  // Password is stored as a SHA-256 hash so the plaintext never appears in
+  // the source. To change it, compute the new hash:
+  //   - macOS/Linux: echo -n "YourNewPassword" | shasum -a 256
+  //   - Or paste into any online SHA-256 tool
+  // Then replace the hex string below.
+  const PASSWORD_HASH = '5157e26b2b674c835c66418eaa5234c6f240d98494c486a99bd57383119630b3';
   const AUTH_KEY = 'margin_calc_admin_auth_v1';
   const SETTINGS_KEY = 'margin_calc_settings_v1';
   const LOG_KEY = 'margin_calc_admin_log_v1';
+
+  async function sha256(text) {
+    const bytes = new TextEncoder().encode(text);
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    return Array.from(new Uint8Array(digest))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+  }
 
   // ==================== DEFAULTS ====================
   const DEFAULTS = {
@@ -858,13 +872,25 @@
     });
   }
 
-  function tryLogin() {
+  async function tryLogin() {
     const val = $('passwordInput').value;
-    if (val === PASSWORD) {
+    if (!val) return;
+
+    let hash;
+    try {
+      hash = await sha256(val);
+    } catch (e) {
+      $('loginError').textContent = 'Browser does not support secure login.';
+      $('loginError').classList.add('show');
+      return;
+    }
+
+    if (hash === PASSWORD_HASH) {
       sessionStorage.setItem(AUTH_KEY, '1');
       $('loginGate').style.display = 'none';
       showApp();
     } else {
+      $('loginError').textContent = 'Incorrect password. Try again.';
       $('loginError').classList.add('show');
       $('passwordInput').value = '';
       $('passwordInput').focus();
